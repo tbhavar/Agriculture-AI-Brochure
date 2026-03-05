@@ -1,0 +1,249 @@
+import React, { useState, useEffect } from 'react';
+import { Phone, Mail, Award, Tractor, CloudSun, TrendingUp, Cpu, MessageSquare, Loader2, AlertCircle } from 'lucide-react';
+
+const App = () => {
+  const [images, setImages] = useState({
+    hero: null,
+    technology: null
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const apiKey = ""; // Provided by environment at runtime
+
+  /**
+   * Helper function for API calls with exponential backoff
+   * Retries up to 5 times with delays of 1s, 2s, 4s, 8s, 16s
+   */
+  const fetchWithRetry = async (url, options, retries = 5, backoff = 1000) => {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        // If the response is not OK, we try to get the text to avoid "Unexpected end of input" on .json()
+        const errorBody = await response.text();
+        throw new Error(`Status ${response.status}: ${errorBody || 'Empty response'}`);
+      }
+      return await response.json();
+    } catch (err) {
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, backoff));
+        return fetchWithRetry(url, options, retries - 1, backoff * 2);
+      }
+      throw err;
+    }
+  };
+
+  const generateImage = async (prompt) => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+    const options = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: { sampleCount: 1 }
+      })
+    };
+
+    try {
+      const result = await fetchWithRetry(url, options);
+      if (result.predictions && result.predictions[0]) {
+        return `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+      }
+      return null;
+    } catch (err) {
+      // Error is caught but we don't log retries to console as per instructions
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const loadImages = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const [heroImg, techImg] = await Promise.all([
+          generateImage("A high-tech professional cover for an agriculture brochure. An Indian farmer in a vibrant green Maharashtra field holding a smartphone displaying a digital holographic crop health analysis. Photorealistic, cinematic lighting, 8k."),
+          generateImage("A modern digital representation of smart farming. A drone flying over a field with digital grid overlays and data charts floating in the air. Professional blue and green tones.")
+        ]);
+        
+        setImages({ hero: heroImg, technology: techImg });
+      } catch (err) {
+        setError("काही तांत्रिक अडचणींमुळे चित्रे लोड होऊ शकली नाहीत. कृपया पृष्ठ पुन्हा लोड करा.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadImages();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 overflow-x-hidden">
+      {/* Error Message Box */}
+      {error && (
+        <div className="bg-red-50 border-b border-red-200 p-4 text-red-800 flex items-center justify-center gap-2">
+          <AlertCircle size={20} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Header/Hero Section */}
+      <header className="relative bg-emerald-900 text-white overflow-hidden">
+        <div className="absolute inset-0 opacity-40">
+          {loading ? (
+            <div className="w-full h-full flex items-center justify-center bg-emerald-800">
+              <Loader2 className="animate-spin w-12 h-12" />
+            </div>
+          ) : images.hero ? (
+            <img src={images.hero} alt="Hero" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-emerald-800 to-emerald-950" />
+          )}
+        </div>
+        <div className="relative z-10 container mx-auto px-6 py-20 text-center">
+          <div className="inline-block px-4 py-1 mb-6 border border-emerald-400 rounded-full text-emerald-300 font-semibold tracking-wide uppercase text-sm">
+            विशेष चर्चासत्र
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight">
+            कृत्रिम बुद्धिमत्ता (AI): <br />
+            <span className="text-emerald-400">आधुनिक शेतीची नवी गुरुकिल्ली</span>
+          </h1>
+          <p className="text-xl md:text-2xl text-emerald-100 max-w-2xl mx-auto">
+            तंत्रज्ञानाचा वापर करून शेती अधिक नफाक्षम आणि सोपी बनवा.
+          </p>
+        </div>
+      </header>
+
+      {/* Introduction */}
+      <section className="py-16 container mx-auto px-6">
+        <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 -mt-20 relative z-20 flex flex-col md:flex-row items-center gap-10">
+          <div className="md:w-1/2">
+            <h2 className="text-3xl font-bold text-emerald-800 mb-6 flex items-center gap-2">
+              <Cpu className="text-emerald-500" /> AI म्हणजे काय?
+            </h2>
+            <p className="text-lg text-gray-700 leading-relaxed mb-6">
+              सोप्या भाषेत सांगायचे तर, <strong>AI (Artificial Intelligence)</strong> म्हणजे 'संगणकाची समज'. ज्याप्रमाणे आपण अनुभवातून शिकतो, त्याप्रमाणे संगणक शेतीचा डेटा पाहून अचूक निर्णय घेण्यास मदत करतो.
+            </p>
+            <div className="bg-emerald-50 border-l-4 border-emerald-500 p-4 italic text-emerald-800">
+              "शेती आता फक्त कष्टाची नाही, तर तंत्रज्ञानाची देखील!"
+            </div>
+          </div>
+          <div className="md:w-1/2 rounded-2xl overflow-hidden shadow-lg h-64 md:h-80 bg-gray-200">
+             {loading ? (
+               <div className="w-full h-full animate-pulse bg-gray-300 flex items-center justify-center">
+                 <Loader2 className="animate-spin text-gray-500"/>
+               </div>
+             ) : images.technology ? (
+               <img src={images.technology} className="w-full h-full object-cover" alt="Technology representation" />
+             ) : (
+               <div className="w-full h-full bg-emerald-100 flex items-center justify-center">
+                 <Tractor size={64} className="text-emerald-300" />
+               </div>
+             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-6 text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">शेतकऱ्यांसाठी AI चे फायदे</h2>
+          <div className="h-1 w-20 bg-emerald-500 mx-auto"></div>
+        </div>
+        
+        <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {[
+            { 
+              icon: <Tractor className="w-10 h-10" />, 
+              title: "पिकांवरील रोग ओळखणे", 
+              desc: "मोबाईलने पिकाचा फोटो काढून रोगाचे निदान आणि त्वरित उपाय मिळवा." 
+            },
+            { 
+              icon: <CloudSun className="w-10 h-10" />, 
+              title: "हवामानाचा अंदाज", 
+              desc: "फवारणी आणि पेरणीसाठी तुमच्या शेताचा अचूक हवामान सल्ला." 
+            },
+            { 
+              icon: <TrendingUp className="w-10 h-10" />, 
+              title: "बाजारभाव सल्ला", 
+              desc: "कोणत्या बाजारपेठेत जास्त भाव मिळेल याचा अचूक अंदाज." 
+            },
+            { 
+              icon: <MessageSquare className="w-10 h-10" />, 
+              title: "LLM (उदा. ChatGPT)", 
+              desc: "मराठीतून बोलून शेतीविषयक प्रश्नांची उत्तरे आणि सरकारी योजनांची माहिती." 
+            }
+          ].map((item, i) => (
+            <div key={i} className="p-8 bg-gray-50 rounded-2xl hover:bg-emerald-50 transition-all border border-gray-100 hover:border-emerald-200 group text-center shadow-sm hover:shadow-md">
+              <div className="mb-4 text-emerald-600 group-hover:scale-110 transition-transform flex justify-center">{item.icon}</div>
+              <h3 className="text-xl font-bold mb-3 text-emerald-900">{item.title}</h3>
+              <p className="text-gray-600">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Speaker Profile */}
+      <section className="py-20 bg-emerald-900 text-white">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center gap-12">
+            <div className="md:w-1/3 text-center">
+              <div className="w-48 h-48 rounded-full bg-emerald-800 border-4 border-emerald-400 mx-auto flex items-center justify-center overflow-hidden mb-6">
+                 <Award className="w-24 h-24 text-emerald-400" />
+              </div>
+              <h3 className="text-2xl font-bold mb-1">CA तन्मय राजेंद्र भावर</h3>
+              <p className="text-emerald-400 font-medium">AI ट्रेनिंग आणि तंत्रज्ञान तज्ज्ञ</p>
+            </div>
+            <div className="md:w-2/3">
+              <h2 className="text-3xl font-bold mb-6">तुमचे मार्गदर्शक</h2>
+              <div className="space-y-4">
+                <p className="text-lg text-emerald-50 leading-relaxed">
+                  तन्मय भावर हे एक अनुभवी तज्ज्ञ असून त्यांनी तंत्रज्ञान आणि अर्थनियोजन यांच्या संगमातून अनेक प्रशिक्षण सत्रे यशस्वीपणे पूर्ण केली आहेत.
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <span className="bg-emerald-700 p-1 rounded-full mt-1 flex-shrink-0"><div className="w-2 h-2 bg-emerald-300 rounded-full"></div></span>
+                    <span><strong>AI ट्रेनिंग तज्ज्ञ:</strong> विविध क्षेत्रातील लोकांना AI चा प्रभावी वापर करण्याचे प्रगत प्रशिक्षण दिले आहे.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="bg-emerald-700 p-1 rounded-full mt-1 flex-shrink-0"><div className="w-2 h-2 bg-emerald-300 rounded-full"></div></span>
+                    <span><strong>डिजिटल साक्षरता प्रसार:</strong> ग्रामीण भागात तंत्रज्ञानाचा वापर वाढवण्यासाठी निरंतर कार्यरत.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="bg-emerald-700 p-1 rounded-full mt-1 flex-shrink-0"><div className="w-2 h-2 bg-emerald-300 rounded-full"></div></span>
+                    <span><strong>व्यावसायिक दृष्टिकोन:</strong> शेतीला 'व्यवसाय' म्हणून फायदेशीर बनवण्यासाठी तंत्रज्ञानाची जोड कशी द्यावी, याचे सखोल ज्ञान.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer / Contact */}
+      <footer className="bg-white py-16 border-t border-gray-100">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto bg-emerald-50 rounded-3xl p-10 shadow-inner text-center">
+            <h2 className="text-3xl font-bold text-emerald-900 mb-8">अधिक माहितीसाठी संपर्क साधा</h2>
+            <div className="flex flex-col md:flex-row justify-center gap-8 items-center">
+              <a href="mailto:catanmaybhavar@gmail.com" className="flex items-center gap-3 text-lg font-medium text-gray-700 hover:text-emerald-600 transition-colors">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-emerald-600"><Mail /></div>
+                catanmaybhavar@gmail.com
+              </a>
+              <a href="tel:+918329213804" className="flex items-center gap-3 text-lg font-medium text-gray-700 hover:text-emerald-600 transition-colors">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-emerald-600"><Phone /></div>
+                +91 8329213804
+              </a>
+            </div>
+          </div>
+          <div className="mt-12 text-center text-gray-500 text-sm">
+            &copy; {new Date().getFullYear()} CA तन्मय राजेंद्र भावर | सर्व हक्क सुरक्षित
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default App;
